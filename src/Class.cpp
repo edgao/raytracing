@@ -185,14 +185,20 @@ public:
       geo = NULL;
       return false;
     }
+    float trueHit = 0;
+    bool goodHit = false;
     if (ray.t_min <= t1 && t1 <= ray.t_max) {
-      *thit = t1;
-      // TODO Calculate normal vector at point of intersection
-      return true;
+      trueHit = t1;
+    } else if (ray.t_min <= t2 && t2 <= ray.t_max) {
+      trueHit = t2;
     }
-    if (ray.t_min <= t1 && t1 <= ray.t_max) {
-      *thit = t1;
-      // TODO Calculate normal vector at point of intersection
+    if (goodHit) {
+      *thit = trueHit;
+      Vector3f pos = ray.evaluate(*thit);
+      Vector3f normal;
+      normal << pos(0) - center(0), pos(1) - center(1), pos(2) - center(2);
+      normal.normalize();
+      geo = new LocalGeo(pos, normal);
       return true;
     }
     thit = NULL;
