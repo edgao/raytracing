@@ -1,3 +1,3 @@
 all:
-	g++ -I /usr/include/eigen3 main.cpp -o ../exec/main.out
+	g++ -I ../lib/ Class.cpp main.cpp -o ../exec/main.out
 
