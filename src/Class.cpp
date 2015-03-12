@@ -2,6 +2,10 @@
 
 using namespace Eigen;
 
+inline bool inRange(float x, float min, float max) {
+  return min <= x && x <= max;
+}
+
 class Ray {
 public:
   Vector3f pos;
@@ -162,8 +166,25 @@ public:
 class Triangle : Shape {
 public:
   Vector3f p1, p2, p3;
+  Vector3f normal;
+  Triangle(Vector3f p1, Vector3f p2, Vector3f p3) {
+    this->p1 = p1;
+    this->p2 = p2;
+    this->p3 = p3;
+    this->normal = (p3 - p1).cross(p2 - p1);
+  }
   bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
-    // TODO Test ray/triangle intersection
+    Matrix3f mat;
+    mat << ray.dir, p2 - p1, p3 - p1;
+    Vector3f sol = mat.householderQr().solve(ray.pos - p1);
+    if (inRange(sol(0), ray.t_min, ray.t_max) && inRange(sol(1), 0, 1) && inRange(sol(2), 0, 1) && sol(1) + sol(2) <= 1) {
+      // If this intersection occurs within the ray's lifespan, and is in the triangle proper
+      *thit = sol(0);
+      geo = new LocalGeo(ray.evaluate(*thit), normal);
+      return true;
+    }
+    thit = NULL;
+    geo = NULL;
     return false;
   }
 };
