@@ -1,4 +1,6 @@
 #include <eigen3/Dense>
+#include <iostream>
+#include <cstdio>
 
 using namespace Eigen;
 
@@ -97,11 +99,12 @@ public:
 
 class Transformation {
 public:
-  Matrix4f m, minvt;
+  Matrix4f m, minv, minvt;
   int type;
   Transformation(Matrix4f m) {
     this->m = m;
-    this->minvt = m.inverse().transpose();
+    this->minv = m.inverse();
+    this->minvt = minv.transpose();
   }
   Vector3f transformPoint(Vector3f vec) {
     Vector4f temp;
@@ -155,7 +158,7 @@ public:
 
 class Shape {
 public:
-  virtual bool intersect(Ray&, float*, LocalGeo*);
+  virtual bool intersect(Ray&, float*, LocalGeo*) {return false;}
   bool intersectP(Ray& ray) {
     float* thit;
     LocalGeo* geo;
@@ -163,7 +166,7 @@ public:
   }
 };
 
-class Triangle : Shape {
+class Triangle : public Shape {
 public:
   Vector3f p1, p2, p3;
   Vector3f normal;
@@ -172,15 +175,16 @@ public:
     this->p2 = p2;
     this->p3 = p3;
     this->normal = (p3 - p1).cross(p2 - p1);
+    this->normal.normalize();
   }
   bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
     Matrix3f mat;
-    mat << ray.dir, p2 - p1, p3 - p1;
+    mat << -ray.dir, p2 - p1, p3 - p1;
     Vector3f sol = mat.householderQr().solve(ray.pos - p1);
     if (inRange(sol(0), ray.t_min, ray.t_max) && inRange(sol(1), 0, 1) && inRange(sol(2), 0, 1) && sol(1) + sol(2) <= 1) {
       // If this intersection occurs within the ray's lifespan, and is in the triangle proper
       *thit = sol(0);
-      geo = new LocalGeo(ray.evaluate(*thit), normal);
+      *geo = LocalGeo(ray.evaluate(*thit), normal);
       return true;
     }
     thit = NULL;
@@ -189,18 +193,28 @@ public:
   }
 };
 
-class Sphere : Shape {
+class Sphere : public Shape {
 public:
   Vector3f center;
   float radius;
+  Sphere(Vector3f c, float r) {
+    center = c;
+    radius = r;
+  }
   bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
     float a, b, c;
-    a = ray.dir(0)*ray.dir(0) + ray.dir(1)*ray.dir(1) + ray.dir(2)*ray.dir(2);
-    b = 2 * (ray.pos(0) - center(0) + ray.pos(1) - center(1) + ray.pos(2) - center(2));
-    c = (ray.pos(0) - center(0)) * (ray.pos(0) - center(0)) + (ray.pos(1) - center(1)) * (ray.pos(1) - center(1)) + (ray.pos(2) - center(2)) * (ray.pos(2) - center(2));
+    a = b = c = 0;
+    for (int i = 0; i < 3; i++) {
+      float t = ray.pos(i) - center(i);
+      a += ray.dir(i) * ray.dir(i);
+      b += 2 * ray.dir(i) * t;
+      c += t * t;
+    }
+    c -= radius;
     float t1, t2;
     t1 = (-b - sqrtf(b*b - 4 * a * c)) / (2 * a);
     t2 = (-b + sqrtf(b*b - 4 * a * c)) / (2 * a);
+    printf("%f %f %f %f %f\n", a, b, c, t1, t2);
     if (isnan(t1)) {
       thit = NULL;
       geo = NULL;
@@ -210,8 +224,10 @@ public:
     bool goodHit = false;
     if (ray.t_min <= t1 && t1 <= ray.t_max) {
       trueHit = t1;
+      goodHit = true;
     } else if (ray.t_min <= t2 && t2 <= ray.t_max) {
       trueHit = t2;
+      goodHit = true;
     }
     if (goodHit) {
       *thit = trueHit;
@@ -219,7 +235,7 @@ public:
       Vector3f normal;
       normal << pos(0) - center(0), pos(1) - center(1), pos(2) - center(2);
       normal.normalize();
-      geo = new LocalGeo(pos, normal);
+      *geo = LocalGeo(pos, normal);
       return true;
     }
     thit = NULL;
