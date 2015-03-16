@@ -1,4 +1,6 @@
 #include <eigen3/Dense>
+#include <float.h>
+// for debugging; remove later
 #include <iostream>
 #include <cstdio>
 
@@ -99,12 +101,19 @@ public:
 
 class Transformation {
 public:
-  Matrix4f m, minv, minvt;
+  Matrix4f m, minv, minvt, mt;
   int type;
+  Transformation() {
+    m = minv = minvt = mt = (Matrix4f() << 1, 0, 0, 0,
+                                           0, 1, 0, 0,
+			                   0, 0, 1, 0,
+			                   0, 0, 0, 1).finished();
+  }
   Transformation(Matrix4f m) {
     this->m = m;
     this->minv = m.inverse();
     this->minvt = minv.transpose();
+    this->mt = m.transpose();
   }
   Vector3f transformPoint(Vector3f vec) {
     Vector4f temp;
@@ -136,14 +145,17 @@ public:
 class Color {
 public:
   float r, g, b;
+  Color() {
+    r = g = b = 0;
+  }
   Color(float r, float g, float b) {
     this->r = r;
     this->g = g;
     this->b = b;
   }
-  Color* add(Color* o) { return new Color(r + o->r, g + o->g, b + o->b); }
-  Color* sub(Color* o) { return new Color(r - o->r, g - o->g, b - o->b); }
-  Color* scale(float s) { return new Color(r * s, g * s, b * s); }
+  Color add(Color o) {return Color(r + o.r, g + o.g, b + o.b); }
+  Color sub(Color o) { return Color(r - o.r, g - o.g, b - o.b); }
+  Color scale(float s) { return Color(r * s, g * s, b * s); }
 };
 
 class BRDF {
@@ -158,6 +170,10 @@ public:
 
 class Shape {
 public:
+  Transformation transform;
+  Shape(Transformation t) {
+    transform = t;
+  }
   virtual bool intersect(Ray&, float*, LocalGeo*) {return false;}
   bool intersectP(Ray& ray) {
     float* thit;
@@ -169,13 +185,23 @@ public:
 class Triangle : public Shape {
 public:
   Vector3f p1, p2, p3;
-  Vector3f normal;
-  Triangle(Vector3f p1, Vector3f p2, Vector3f p3) {
+  Vector3f n1, n2, n3;
+  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Transformation t) : Shape(t){
     this->p1 = p1;
     this->p2 = p2;
     this->p3 = p3;
-    this->normal = (p3 - p1).cross(p2 - p1);
-    this->normal.normalize();
+    n1 = n2 = n3 = (p2 - p1).cross(p3 - p1);
+    this->n1.normalize();
+    this->n2.normalize();
+    this->n3.normalize();
+  }
+  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f n1, Vector3f n2, Vector3f n3, Transformation t) : Shape(t) {
+    this->p1 = p1;
+    this->p2 = p2;
+    this->p3 = p3;
+    this->n1 = n1;
+    this->n2 = n2;
+    this->n3 = n3;
   }
   bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
     Matrix3f mat;
@@ -184,11 +210,9 @@ public:
     if (inRange(sol(0), ray.t_min, ray.t_max) && inRange(sol(1), 0, 1) && inRange(sol(2), 0, 1) && sol(1) + sol(2) <= 1) {
       // If this intersection occurs within the ray's lifespan, and is in the triangle proper
       *thit = sol(0);
-      *geo = LocalGeo(ray.evaluate(*thit), normal);
+      *geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
       return true;
     }
-    thit = NULL;
-    geo = NULL;
     return false;
   }
 };
@@ -197,7 +221,7 @@ class Sphere : public Shape {
 public:
   Vector3f center;
   float radius;
-  Sphere(Vector3f c, float r) {
+  Sphere(Vector3f c, float r, Transformation t) : Shape(t) {
     center = c;
     radius = r;
   }
@@ -216,8 +240,6 @@ public:
     t2 = (-b + sqrtf(b*b - 4 * a * c)) / (2 * a);
     printf("%f %f %f %f %f\n", a, b, c, t1, t2);
     if (isnan(t1)) {
-      thit = NULL;
-      geo = NULL;
       return false;
     }
     float trueHit = 0;
@@ -238,8 +260,76 @@ public:
       *geo = LocalGeo(pos, normal);
       return true;
     }
-    thit = NULL;
-    geo = NULL;
     return false;
+  }
+};
+
+class Light {
+public:
+  Color color;
+  virtual void generateLightRay(LocalGeo& local, Ray* ray, Color* color) {}
+};
+
+class PointLight : public Light {
+public:
+  static const int NO_FALLOFF = 0, LINEAR_FALLOFF = 1, QUADRATIC_FALLOFF = 2;
+  Vector3f point;
+  int falloff;
+  PointLight(Vector3f p, Color c, int f) {
+    point = p;
+    color = c;
+    falloff = f;
+  }
+  void generateLightRay(LocalGeo& local, Ray* ray, Color* color) {
+    Vector3f direction = this->point - local.pos;
+    *ray = Ray(local.pos, direction, 0, 1);
+    switch (this->falloff) {
+    case NO_FALLOFF:
+      *color = this->color;
+      break;
+    case LINEAR_FALLOFF:
+      *color = this->color.scale(1.0 / direction.norm());
+      break;
+    case QUADRATIC_FALLOFF:
+      *color = this->color.scale(1.0 / direction.dot(direction));
+      break;
+    }
+  }
+};
+
+class DirectionalLight : public Light {
+public:
+  Vector3f direction;
+  DirectionalLight(Vector3f d, Color c) {
+    direction = d;
+    color = c;
+  }
+  void generateLightRay(LocalGeo& local, Ray* ray, Color* color) {
+    *ray = Ray(local.pos, direction, 0, FLT_MAX);
+    *color = this->color;
+  }
+};
+
+class Raytracer {
+public:
+  // Pointer to array of pointers to Shapes
+  unsigned int shapes_c;
+  Shape** shapes;
+  unsigned int lights_c;
+  Light** lights;
+  Raytracer(unsigned int sc, Shape** s, unsigned int lc, Light** l) {
+    shapes_c = sc;
+    shapes = s;
+    lights_c = lc;
+    lights = l;
+  }
+  Color trace(Ray& ray, unsigned int depth) {
+    if (depth == 0) return Color(0, 0, 0);
+    Color ret = Color(0, 0, 0);
+    for (unsigned int i = 0; i < shapes_c; i++) {
+      Shape* shape = shapes[i];
+      
+    }
+    return Color(0, 0, 0);
   }
 };
