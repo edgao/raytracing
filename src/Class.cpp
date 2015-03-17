@@ -1,6 +1,6 @@
 #include <eigen3/Dense>
 #include <float.h>
-// for debugging; remove later
+// for ging; remove later
 #include <iostream>
 #include <cstdio>
 
@@ -37,7 +37,7 @@ public:
   LocalGeo() {}
   LocalGeo(Vector3f p , Vector3f n) {
     pos = p;
-    normal = n;
+    normal = n.normalized();
   }
 };
 
@@ -166,14 +166,17 @@ public:
 class BRDF {
 public:
   Color kd, ks, ka, kr;
+  float specExp;
   BRDF() {
     kd = ks = ka = kr = Color();
+    specExp = 1;
   }
-  BRDF(Color kd, Color ks, Color ka, Color kr) {
+  BRDF(Color kd, Color ks, Color ka, Color kr, float ns) {
     this->kd = kd;
     this->ks = ks;
     this->ka = ka;
     this->kr = kr;
+    specExp = ns;
   }
 };
 
@@ -216,9 +219,9 @@ public:
     this->p1 = p1;
     this->p2 = p2;
     this->p3 = p3;
-    this->n1 = n1;
-    this->n2 = n2;
-    this->n3 = n3;
+    this->n1 = n1.normalized();
+    this->n2 = n2.normalized();
+    this->n3 = n3.normalized();
   }
   bool intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     // TODO Test ray transformation
@@ -348,8 +351,11 @@ public:
     lights = l;
     ambient_lights = al;
   }
+  // axis must be a normalized vector
+  Vector3f reflectVector(Vector3f vec, Vector3f axis) {
+    return 2 * (axis * axis.dot(vec)) - vec;
+  }
   Color shade(LocalGeo& geo, Light& light, Vector3f viewer, BRDF brdf) {
-    // TODO Implement shading
     Color res = Color();
     Ray lightRay;
     Color lightColor;
@@ -357,12 +363,14 @@ public:
     // Specular shading
     float base = lightRay.dir.normalized().dot(geo.normal);
     if (base < 0) base = 0;
-    res = res.add(lightColor.mul(brdf.ks).scale(base));
+    res = res.add(lightColor.mul(brdf.kd).scale(base));
     // Diffuse shading
-    Vector3f reflection = lightRay.dir - (geo.normal * 2 * geo.normal.dot(lightRay.dir));
+    Vector3f reflection = reflectVector(lightRay.dir, geo.normal);
     base = reflection.normalized().dot((geo.normal - viewer).normalized());
     if (base < 0)  base = 0;
+    // TODO Figure out what the specular exponent is
     base = pow(base, 1);
+    res = res.add(lightColor.mul(brdf.ks).scale(base));
   }
   bool firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo) {
     Shape first_hit = Shape();
@@ -407,6 +415,8 @@ public:
     if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo)) {
       return Color(0, 0, 0);
     }
+    // TODO Remove debugging return statements
+    return Color(1, 1, 1);
     // Shade this thing - for each light, if this point reaches the light, do shading
     for (unsigned int i = 0; i < lights_c; i++) {
       Ray light_ray;
@@ -418,9 +428,8 @@ public:
 	ret = ret.add(shade(first_hit_geo, *light, ray.pos, first_hit_shape.brdf));
       }
     }
+    // TODO Add ambient lighting - ret = ret.add(brdf.ka.mul(ambient_lights))
     // TODO Recurse for reflection and add the resulting colors
-    // TODO Remove once finished debugging
-    return Color(1, 1, 1);
     return ret;
   }
 };
