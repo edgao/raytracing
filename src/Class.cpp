@@ -4,6 +4,7 @@
 #include <iostream>
 #include <cstdio>
 
+using namespace std;
 using namespace Eigen;
 
 inline bool inRange(float x, float min, float max) {
@@ -15,6 +16,7 @@ public:
   Vector3f pos;
   Vector3f dir;
   float t_min, t_max;
+  Ray() {}
   Ray(Vector3f p, Vector3f d, float t_min, float t_max) {
     pos = p;
     dir = d;
@@ -32,6 +34,7 @@ class LocalGeo {
 public:
   Vector3f pos;
   Vector3f normal;
+  LocalGeo() {}
   LocalGeo(Vector3f p , Vector3f n) {
     pos = p;
     normal = n;
@@ -115,26 +118,27 @@ public:
     this->minvt = minv.transpose();
     this->mt = m.transpose();
   }
-  Vector3f transformPoint(Vector3f vec) {
+  static Vector3f doTransformation(Vector3f vec, Matrix4f mat, float ext) {
     Vector4f temp;
-    temp << vec(0), vec(1), vec(2), 1;
-    temp = m * temp;
-    Vector3f ret;
-    ret << temp(0) / temp(3), temp(1) / temp(3), temp(2) / temp(3);
-    return ret;
-  }
-  Vector3f transformNormal(Vector3f vec) {
-    Vector4f temp;
-    temp << vec(0), vec(1), vec(2), 0;
-    temp = minvt * temp;
+    temp << vec(0), vec(1), vec(2), ext;
+    temp = mat * temp;
     Vector3f ret;
     ret << temp(0), temp(1), temp(2);
-    ret.normalize();
     return ret;
+  }
+  Vector3f transformPoint(Vector3f vec) {
+    return doTransformation(vec, m, 1);
+  }
+  Vector3f transformNormal(Vector3f vec) {
+    return doTransformation(vec, minvt, 0).normalized();
   }
   Ray transformRay(Ray ray) {
     Ray ret(transformPoint(ray.pos), transformPoint(ray.dir), ray.t_min, ray.t_max);
     return ret;
+  }
+  // Rather than transforming the shapes themselves, transform the rays into the shapes' local coords
+  Ray transformRayToLocalCoords(Ray ray) {
+    return Ray(doTransformation(ray.pos, minv, 1), doTransformation(ray.dir, mt, 0), ray.t_min, ray.t_max);
   }
   LocalGeo transformLocalGeo(LocalGeo geo) {
     LocalGeo ret(transformPoint(geo.pos), transformNormal(geo.normal));
@@ -156,23 +160,34 @@ public:
   Color add(Color o) {return Color(r + o.r, g + o.g, b + o.b); }
   Color sub(Color o) { return Color(r - o.r, g - o.g, b - o.b); }
   Color scale(float s) { return Color(r * s, g * s, b * s); }
+  Color mul(Color o) { return Color(r * o.r, g * o.g, b * o.b); }
 };
 
 class BRDF {
 public:
   Color kd, ks, ka, kr;
-};
-
-class Sample {
-public:
-  float x, y;
+  BRDF() {
+    kd = ks = ka = kr = Color();
+  }
+  BRDF(Color kd, Color ks, Color ka, Color kr) {
+    this->kd = kd;
+    this->ks = ks;
+    this->ka = ka;
+    this->kr = kr;
+  }
 };
 
 class Shape {
 public:
   Transformation transform;
-  Shape(Transformation t) {
+  BRDF brdf;
+  Shape() {
+    transform = Transformation();
+    brdf = BRDF();
+  }
+  Shape(Transformation t, BRDF brdf) {
     transform = t;
+    this->brdf = brdf;
   }
   virtual bool intersect(Ray&, float*, LocalGeo*) {return false;}
   bool intersectP(Ray& ray) {
@@ -186,7 +201,8 @@ class Triangle : public Shape {
 public:
   Vector3f p1, p2, p3;
   Vector3f n1, n2, n3;
-  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Transformation t) : Shape(t){
+  // Constructs a triangle with the default vertex normals (p2 - p1) x (p3 - p1) i.e. flat triangle
+  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Transformation t, BRDF brdf) : Shape(t, brdf) {
     this->p1 = p1;
     this->p2 = p2;
     this->p3 = p3;
@@ -195,7 +211,8 @@ public:
     this->n2.normalize();
     this->n3.normalize();
   }
-  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f n1, Vector3f n2, Vector3f n3, Transformation t) : Shape(t) {
+  // Constructs a triangle with the given vertex normals
+  Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f n1, Vector3f n2, Vector3f n3, Transformation t, BRDF brdf) : Shape(t, brdf) {
     this->p1 = p1;
     this->p2 = p2;
     this->p3 = p3;
@@ -203,7 +220,9 @@ public:
     this->n2 = n2;
     this->n3 = n3;
   }
-  bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
+  bool intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
+    // TODO Test ray transformation
+    Ray ray = transform.transformRayToLocalCoords(world_ray);
     Matrix3f mat;
     mat << -ray.dir, p2 - p1, p3 - p1;
     Vector3f sol = mat.householderQr().solve(ray.pos - p1);
@@ -221,11 +240,13 @@ class Sphere : public Shape {
 public:
   Vector3f center;
   float radius;
-  Sphere(Vector3f c, float r, Transformation t) : Shape(t) {
+  Sphere(Vector3f c, float r, Transformation t, BRDF brdf) : Shape(t, brdf) {
     center = c;
     radius = r;
   }
-  bool intersect(Ray& ray, float* thit, LocalGeo* geo) {
+  bool intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
+    // TODO Test ray transformation
+    Ray ray = transform.transformRayToLocalCoords(world_ray);
     float a, b, c;
     a = b = c = 0;
     for (int i = 0; i < 3; i++) {
@@ -315,21 +336,91 @@ public:
   // Pointer to array of pointers to Shapes
   unsigned int shapes_c;
   Shape** shapes;
+  // Pointer to array of pointers to Lights
   unsigned int lights_c;
   Light** lights;
-  Raytracer(unsigned int sc, Shape** s, unsigned int lc, Light** l) {
+  // Ambient lighting is just the sum of all ambient lights
+  Color ambient_lights;
+  Raytracer(unsigned int sc, Shape** s, unsigned int lc, Light** l, Color al) {
     shapes_c = sc;
     shapes = s;
     lights_c = lc;
     lights = l;
+    ambient_lights = al;
+  }
+  Color shade(LocalGeo& geo, Light& light, Vector3f viewer, BRDF brdf) {
+    // TODO Implement shading
+    Color res = Color();
+    Ray lightRay;
+    Color lightColor;
+    light.generateLightRay(geo, &lightRay, &lightColor);
+    // Specular shading
+    float base = lightRay.dir.normalized().dot(geo.normal);
+    if (base < 0) base = 0;
+    res = res.add(lightColor.mul(brdf.ks).scale(base));
+    // Diffuse shading
+    Vector3f reflection = lightRay.dir - (geo.normal * 2 * geo.normal.dot(lightRay.dir));
+    base = reflection.normalized().dot((geo.normal - viewer).normalized());
+    if (base < 0)  base = 0;
+    base = pow(base, 1);
+  }
+  bool firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo) {
+    Shape first_hit = Shape();
+    float first_hit_t = FLT_MAX;
+    LocalGeo first_hit_geo;
+    bool had_hit = false;
+    for (unsigned int i = 0; i < shapes_c; i++) {
+      Shape* shape = shapes[i];
+      if (shape == ignore) continue;
+      float thit;
+      LocalGeo geo;
+      if (shape->intersect(ray, &thit, &geo) && inRange(thit, ray.t_min, ray.t_max)) {
+	had_hit = true;
+	if (thit < first_hit_t) {
+	  first_hit_t = thit;
+	  first_hit = *shape;
+	  first_hit_geo = geo;
+	}
+      }
+    }
+    if (had_hit) {
+      *shape = first_hit;
+      *thit = first_hit_t;
+      *geo = first_hit_geo;
+    }
+    return false;
+  }
+  bool firstObjectHitP(Ray& ray, Shape* ignore) {
+    Shape blahs;
+    float blaht;
+    LocalGeo blahg;
+    return firstObjectHit(ray, ignore, &blahs, &blaht, &blahg);
   }
   Color trace(Ray& ray, unsigned int depth) {
     if (depth == 0) return Color(0, 0, 0);
     Color ret = Color(0, 0, 0);
-    for (unsigned int i = 0; i < shapes_c; i++) {
-      Shape* shape = shapes[i];
-      
+    // Find the first thing this ray hits
+    Shape first_hit_shape;
+    float first_hit_t;
+    LocalGeo first_hit_geo;
+    // If this ray never hits anything, return the color black
+    if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo)) {
+      return Color(0, 0, 0);
     }
-    return Color(0, 0, 0);
+    // Shade this thing - for each light, if this point reaches the light, do shading
+    for (unsigned int i = 0; i < lights_c; i++) {
+      Ray light_ray;
+      Color light_color;
+      Light* light = lights[i];
+      light->generateLightRay(first_hit_geo, &light_ray, &light_color);
+      // If there is no intervening object, let's do shading
+      if (!firstObjectHitP(ray, &first_hit_shape)) {
+	ret = ret.add(shade(first_hit_geo, *light, ray.pos, first_hit_shape.brdf));
+      }
+    }
+    // TODO Recurse for reflection and add the resulting colors
+    // TODO Remove once finished debugging
+    return Color(1, 1, 1);
+    return ret;
   }
 };
