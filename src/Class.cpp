@@ -251,27 +251,22 @@ public:
     // TODO Test ray transformation
     Ray ray = transform.transformRayToLocalCoords(world_ray);
     float a, b, c;
-    a = b = c = 0;
-    for (int i = 0; i < 3; i++) {
-      float t = ray.pos(i) - center(i);
-      a += ray.dir(i) * ray.dir(i);
-      b += 2 * ray.dir(i) * t;
-      c += t * t;
-    }
-    c -= radius;
+    a = ray.dir.dot(ray.dir);
+    b = 2 * ray.dir.dot(ray.pos - center);
+    c = (ray.pos - center).dot(ray.pos - center);
+    c -= radius * radius;
     float t1, t2;
     t1 = (-b - sqrtf(b*b - 4 * a * c)) / (2 * a);
     t2 = (-b + sqrtf(b*b - 4 * a * c)) / (2 * a);
-    printf("%f %f %f %f %f\n", a, b, c, t1, t2);
     if (isnan(t1)) {
       return false;
     }
     float trueHit = 0;
     bool goodHit = false;
-    if (ray.t_min <= t1 && t1 <= ray.t_max) {
+    if (inRange(t1, ray.t_min, ray.t_max)) {
       trueHit = t1;
       goodHit = true;
-    } else if (ray.t_min <= t2 && t2 <= ray.t_max) {
+    } else if (inRange(t2, ray.t_min, ray.t_max)) {
       trueHit = t2;
       goodHit = true;
     }
@@ -329,7 +324,7 @@ public:
     color = c;
   }
   void generateLightRay(LocalGeo& local, Ray* ray, Color* color) {
-    *ray = Ray(local.pos, direction, 0, FLT_MAX);
+    *ray = Ray(local.pos, -direction, 0, FLT_MAX);
     *color = this->color;
   }
 };
@@ -356,6 +351,7 @@ public:
     return 2 * (axis * axis.dot(vec)) - vec;
   }
   Color shade(LocalGeo& geo, Light& light, Vector3f viewer, BRDF brdf) {
+    viewer = viewer - geo.pos;
     Color res = Color();
     Ray lightRay;
     Color lightColor;
@@ -368,8 +364,7 @@ public:
     Vector3f reflection = reflectVector(lightRay.dir, geo.normal);
     base = reflection.normalized().dot((geo.normal - viewer).normalized());
     if (base < 0)  base = 0;
-    // TODO Figure out what the specular exponent is
-    base = pow(base, 1);
+    base = pow(base, brdf.specExp);
     res = res.add(lightColor.mul(brdf.ks).scale(base));
   }
   bool firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo) {
@@ -395,6 +390,7 @@ public:
       *shape = first_hit;
       *thit = first_hit_t;
       *geo = first_hit_geo;
+      return true;
     }
     return false;
   }
@@ -412,10 +408,9 @@ public:
     float first_hit_t;
     LocalGeo first_hit_geo;
     // If this ray never hits anything, return the color black
-    if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo)) {
+    if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo) || !inRange(first_hit_t, ray.t_min, ray.t_max)) {
       return Color(0, 0, 0);
     }
-    // TODO Remove debugging return statements
     return Color(1, 1, 1);
     // Shade this thing - for each light, if this point reaches the light, do shading
     for (unsigned int i = 0; i < lights_c; i++) {
@@ -425,11 +420,15 @@ public:
       light->generateLightRay(first_hit_geo, &light_ray, &light_color);
       // If there is no intervening object, let's do shading
       if (!firstObjectHitP(ray, &first_hit_shape)) {
+	printf("SHADING\n");
 	ret = ret.add(shade(first_hit_geo, *light, ray.pos, first_hit_shape.brdf));
       }
     }
-    // TODO Add ambient lighting - ret = ret.add(brdf.ka.mul(ambient_lights))
-    // TODO Recurse for reflection and add the resulting colors
+    ret = ret.add(first_hit_shape.brdf.ka.mul(ambient_lights));
+    Vector3f reflectedVec = -reflectVector(ray.dir, first_hit_geo.normal);
+    Ray reflectedRay = Ray(reflectedVec, first_hit_geo.pos, 0, FLT_MAX);
+    Color reflected_color = trace(reflectedRay, depth - 1);
+    ret = ret.add(reflected_color.mul(first_hit_shape.brdf.kr));
     return ret;
   }
 };
