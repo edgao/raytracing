@@ -1,3 +1,5 @@
 all:
-	g++ -I ../lib/ Class.cpp main.cpp -o ../exec/main.out
+	g++ -I ../lib/ -std=c++11 Class.cpp main.cpp -o ../exec/main.out
 
+dev:
+	g++ -I ../lib/ -std=c++11 Class.cpp main.cpp -o main.out
