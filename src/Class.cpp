@@ -1,7 +1,7 @@
 #include <float.h>
 #include "Class.h"
-
-using namespace std;
+#include <iostream>
+#include <cstdio>
 
 inline bool inRange(float x, float min, float max) {
   return min <= x && x <= max;
@@ -177,6 +177,7 @@ bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     // If this intersection occurs within the ray's lifespan, and is in the triangle proper
     *thit = sol(0);
     *geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
+    std::cout << "TRIANGLE NORMAL\n" << (sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1) << std::endl;
     return true;
   }
   return false;
@@ -265,16 +266,19 @@ Vector3f Raytracer::reflectVector(Vector3f vec, Vector3f axis) {
 Color Raytracer::shade(LocalGeo& geo, Ray& lightRay, Color lightColor, Vector3f viewer, BRDF brdf) {
   viewer = viewer - geo.pos;
   Color res = Color();
-  // Specular shading
+
+  // Diffuse shading
   float base = lightRay.dir.normalized().dot(geo.normal);
   if (base < 0) base = 0;
   res = res.add(lightColor.mul(brdf.kd).scale(base));
-  // Diffuse shading
+
+  // Specular shading
   Vector3f reflection = reflectVector(lightRay.dir, geo.normal);
-  base = reflection.normalized().dot((geo.normal - viewer).normalized());
+  base = reflection.normalized().dot(viewer.normalized());
   if (base < 0)  base = 0;
   base = pow(base, brdf.specExp);
   res = res.add(lightColor.mul(brdf.ks).scale(base));
+
   return res;
 }
 bool Raytracer::firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo) {
@@ -284,15 +288,16 @@ bool Raytracer::firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thi
   bool had_hit = false;
   for (unsigned int i = 0; i < shapes_c; i++) {
     Shape* shape = shapes[i];
-    if (ignore != NULL && shape->id == ignore->id) continue;
-    float thit;
-    LocalGeo geo;
-    if (shape->intersect(ray, &thit, &geo) && inRange(thit, ray.t_min, ray.t_max)) {
-      had_hit = true;
-      if (thit < first_hit_t) {
-	first_hit_t = thit;
-	first_hit = *shape;
-	first_hit_geo = geo;
+    if (ignore == NULL || shape->id != ignore->id) {
+      float thit;
+      LocalGeo geo;
+      if (shape->intersect(ray, &thit, &geo) && inRange(thit, ray.t_min, ray.t_max)) {
+	had_hit = true;
+	if (thit < first_hit_t) {
+	  first_hit_t = thit;
+	  first_hit = *shape;
+	  first_hit_geo = geo;
+	}
       }
     }
   }
@@ -328,7 +333,10 @@ Color Raytracer::trace(Ray& ray, unsigned int depth) {
     Light* light = lights[i];
     light->generateLightRay(first_hit_geo, &light_ray, &light_color);
     // If there is no intervening object, let's do shading
-    if (!firstObjectHitP(ray, &first_hit_shape)) {
+    Shape blahs;
+    float blaht;
+    LocalGeo blahg;
+    if (!firstObjectHitP(light_ray, &first_hit_shape/*, &blahs, &blaht, &blahg*/)) {
       ret = ret.add(shade(first_hit_geo, light_ray, light_color, ray.pos, first_hit_shape.brdf));
     }
   }
