@@ -115,10 +115,11 @@ class Raytracer {
   vector<Shape*> shapes;
   vector<Light*> lights;
   Color ambient_lights;
-  Raytracer(vector<Shape*>, vector<Light*>, Color);
+  Raytracer(vector<Shape*>*, vector<Light*>*, Color);
   Vector3f reflectVector(Vector3f vec, Vector3f axis);
   Color shade(LocalGeo& geo, Ray& lightRay, Color lightColor, Vector3f viewer, BRDF brdf);
   bool firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo);
   bool firstObjectHitP(Ray& ray, Shape* ignore);
   Color trace(Ray& ray, unsigned int depth);
+  Color trace(Ray& ray, unsigned int depth, Shape*);
 };

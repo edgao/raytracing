@@ -253,9 +253,9 @@ void DirectionalLight::generateLightRay(LocalGeo& local, Ray* ray, Color* color)
   *color = this->color;
 }
 
-Raytracer::Raytracer(vector<Shape*> s, vector<Light*> l, Color al) {
-  shapes = s;
-  lights = l;
+Raytracer::Raytracer(vector<Shape*>* s, vector<Light*>* l, Color al) {
+  shapes = *s;
+  lights = *l;
   ambient_lights = al;
 }
 // axis must be a normalized vector
@@ -316,7 +316,8 @@ bool Raytracer::firstObjectHitP(Ray& ray, Shape* ignore) {
   LocalGeo blahg;
   return firstObjectHit(ray, ignore, &blahs, &blaht, &blahg);
 }
-Color Raytracer::trace(Ray& ray, unsigned int depth) {
+Color Raytracer::trace(Ray& ray, unsigned int depth) { return trace(ray, depth, NULL); }
+Color Raytracer::trace(Ray& ray, unsigned int depth, Shape* ignore) {
   if (depth == 0) return Color(0, 0, 0);
   Color ret = Color(0, 0, 0);
   // Find the first thing this ray hits
@@ -324,7 +325,7 @@ Color Raytracer::trace(Ray& ray, unsigned int depth) {
   float first_hit_t;
   LocalGeo first_hit_geo;
   // If this ray never hits anything, return the color black
-  if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo) || !inRange(first_hit_t, ray.t_min, ray.t_max)) {
+  if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo) || !inRange(first_hit_t, ray.t_min, ray.t_max) || (ignore != NULL && first_hit_shape.id == ignore->id)) {
     return Color(0, 0, 0);
   }
   // Shade this thing - for each light, if this point reaches the light, do shading
@@ -342,9 +343,22 @@ Color Raytracer::trace(Ray& ray, unsigned int depth) {
     }
   }
   ret = ret.add(first_hit_shape.brdf.ka.mul(ambient_lights));
-  Vector3f reflectedVec = -reflectVector(ray.dir, first_hit_geo.normal);
+  if (depth < 3) {
+    printf("ID = %d, DEPTH = %d; shaded to %f\n", first_hit_shape.id, depth, ret.r);
+  }
+  Vector3f reflectedVec = reflectVector(-ray.dir, first_hit_geo.normal);
   Ray reflectedRay = Ray(reflectedVec, first_hit_geo.pos, 0, FLT_MAX);
-  Color reflected_color = trace(reflectedRay, depth - 1);
+  //printf("Shading %d at depth %d\n", first_hit_shape.id, depth);
+  //std::cout << reflectedVec << std::endl;
+  //std::cout << first_hit_geo.pos << std::endl;
+  Color reflected_color = trace(reflectedRay, depth - 1, &first_hit_shape);
+  if (reflected_color.r > 0.0001) {
+    printf("Adding color to ID %d at depth %d: %f -> %f\n", first_hit_shape.id, depth, reflected_color.r, reflected_color.mul(first_hit_shape.brdf.kr).r);
+  }
+  if (reflected_color.r > 0.0001)
+    printf("Before %f\n", ret.r);
   ret = ret.add(reflected_color.mul(first_hit_shape.brdf.kr));
+  if (reflected_color.r > 0.0001)
+    printf("After %f\n", ret.r);
   return ret;
 }

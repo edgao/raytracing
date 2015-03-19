@@ -35,10 +35,10 @@ int main() {
   Vector3f cam;
   Vector3f ul, ur, ll, lr;
   cam <<   0,   0, 50;
-  ul  << -10,  10, 10;
-  ur  <<  10,  10, 10;
-  ll  << -10, -10, 10;
-  lr  <<  10, -10, 10;
+  ul  << -10,  10, 40;
+  ur  <<  10,  10, 40;
+  ll  << -10, -10, 40;
+  lr  <<  10, -10, 40;
   /*
   cam << 2, 0, 1;
   ul << 3, -4, 2;
@@ -49,17 +49,17 @@ int main() {
   Transformation identity;
   // Set up some shapes
   vector<Shape*> shapes;
-  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 1, identity, BRDF(Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(0, 0, 0), 64)));
-  shapes.push_back(new Triangle((Vector3f() << 10, 0, 150).finished(), (Vector3f() << 10, 15, -150).finished(), (Vector3f() << 10, -15, -150).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(1, 1, 1), 64)));
-  shapes.push_back(new Triangle((Vector3f() << -10, 0, 150).finished(), (Vector3f() << -10, -15, -150).finished(), (Vector3f() << -10, 15, -150).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(1, 1, 1), 64)));
+  //shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 1, identity, BRDF(Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(0, 0, 0), 64)));
+  shapes.push_back(new Triangle((Vector3f() << 10, 0, 150).finished(), (Vector3f() << 10, 150, -1500).finished(), (Vector3f() << 10, -150, -1500).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(100, 100, 100), 64)));
+  shapes.push_back(new Triangle((Vector3f() << -10, 0, 150).finished(), (Vector3f() << -10, -15, -1500).finished(), (Vector3f() << -10, 15, -1500).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(100, 100, 100), 64)));
+  std::cout << shapes[0]->id << " " << shapes[1]->id << std::endl;
   // Set up some lights
-  unsigned int lights_c = 2;
   vector<Light*> lights;
-  lights.push_back(new PointLight((Vector3f() << 3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
-  lights.push_back(new PointLight((Vector3f() << -3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
-  Color ambient = Color(0.05, 0.05, 0.05);
+  //lights.push_back(new PointLight((Vector3f() << 3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
+  //lights.push_back(new PointLight((Vector3f() << -3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
+  Color ambient = Color(0.15, 0.15, 0.15);
 
-  Raytracer tracer = Raytracer(shapes, lights, ambient);
+  Raytracer tracer = Raytracer(&shapes, &lights, ambient);
   for (int r = 0; r < height; r++) {
     if (r % 20 == 0) printf("%6.3f%%\n", 100.0 * r / height);
     for (int c = 0; c < width; c++) {
@@ -68,7 +68,7 @@ int main() {
       v = 1.0 * r / height;
       Vector3f pos = (u * (v * ll + ((1 - v) * ul))) + ((1 - u) * (v * lr + ((1 - v) * ur)));
       Ray ray = Ray(pos, pos - cam, 0, FLT_MAX);
-      Color res = tracer.trace(ray, 5);
+      Color res = tracer.trace(ray, 3);
       pixels[r * width + c] = res;
     }
   }
