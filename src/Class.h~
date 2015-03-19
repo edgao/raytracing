@@ -1,0 +1,8 @@
+class Ray {
+ public:
+  Vector3f pos, dir;
+  float t_min, t_max;
+  Ray();
+  Ray(Vector3f, Vector3f, float, float);
+  Vector3f evaluate(float);
+};
