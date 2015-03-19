@@ -130,6 +130,7 @@ BRDF::BRDF(Color kd, Color ks, Color ka, Color kr, float ns) {
   specExp = ns;
 }
 
+int Shape::curID = 0;
 Shape::Shape() {
   transform = Transformation();
   brdf = BRDF();
@@ -177,7 +178,7 @@ bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     // If this intersection occurs within the ray's lifespan, and is in the triangle proper
     *thit = sol(0);
     *geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
-    std::cout << "TRIANGLE NORMAL\n" << (sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1) << std::endl;
+    //std::cout << "TRIANGLE NORMAL\n" << (sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1) << std::endl;
     return true;
   }
   return false;
@@ -277,6 +278,8 @@ Color Raytracer::shade(LocalGeo& geo, Ray& lightRay, Color lightColor, Vector3f 
   base = reflection.normalized().dot(viewer.normalized());
   if (base < 0)  base = 0;
   base = pow(base, brdf.specExp);
+  //if (base > 0.05)
+  //std::cout << "LIGHT DIRECTION\n" << lightRay.dir.normalized() << "\nVIEWER DIRECTION\n" << viewer.normalized() << "\nLIGHT REFLECTION ACROSS NORMAL\n" << reflection.normalized() << "\nBASE\n" << base << std::endl;
   res = res.add(lightColor.mul(brdf.ks).scale(base));
 
   return res;
