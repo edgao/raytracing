@@ -3,17 +3,21 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <float.h>
+
 #include <eigen3/Dense>
-#define cimg_use_jpeg
-#include "CImg.h"
 #include "Class.h"
 
 using namespace std;
 using namespace Eigen;
-using namespace cimg_library;
 
 Transformation trans;
 BRDF brdf;
+vector<Shape*> shapes;
+vector<Light*> lights;
+Color ambient = Color(); 
+vector<Vector3f> camera;
+
 enum string_code{
     cam, sph, tri, obj, ltp, ltd, lta, mat, xft, xfr, xfs, dud
 };
@@ -33,15 +37,17 @@ string_code hash_it(string const& op){
     return dud; // literally a dud case, or unimplemented case
 } 
 
-void get_params(string line, vector<float> params, int expected){
+vector<float> get_params(string line, int expected){
     // takes a string, vector, and expected number of args, fills vector with params
     // if there are more params than expected, ignores the extra params
     //     and issues warning to stderr
-    params.reserve(expected);
+    vector<float> params(expected, 0.0);
     stringstream ss(line);
     string param;
     unsigned int i = 0;
     while (getline(ss, param, ' ') and i<expected){
+        params[i] = stof(param);
+        cout << param << ":" << params[i]  << endl;
         i++;
     }
 
@@ -50,22 +56,45 @@ void get_params(string line, vector<float> params, int expected){
         cout << param << endl;
         cerr << "Extra parameters, ignoring" << endl;
     }
+    return params;
 }
 
 // TO IMPLEMENT: individual functions for handling each case
 // each function should take a string listing the parameters
-int case_sph(vector<float> params){
-    float cx=params[0], cy=params[1], cz=params[2], r=params[3];
-    Vector3f center;
-    center << cx, cy, cz;
-    Sphere sph = Sphere(center, r, trans, brdf);
-    return 0;
+int case_cam(vector<float>* params){
+    cout << "handling cam" << endl;
+    float ex=(*params)[0], ey=(*params)[1], ez=(*params)[2];
+    float llx=(*params)[3], lly=(*params)[4], llz=(*params)[5];
+    float lrx=(*params)[6], lry=(*params)[7], lrz=(*params)[8];
+    float ulx=(*params)[9], uly=(*params)[10], ulz=(*params)[11];
+    float urx=(*params)[12], ury=(*params)[13], urz=(*params)[14];
+    Vector3f e, ll, lr, ul, ur;
+    e << ex, ey, ez;
+    ll << llx, lly, llz;
+    lr << lrx, lry, lrz;
+    ul << ulx, uly, ulz;
+    ur << urx, ury, urz;
+    camera.push_back(e);
+    camera.push_back(ll);
+    camera.push_back(ul);
+    camera.push_back(ur);
+    return 1;
 }
 
-int case_tri(vector<float> params){
-    float ax=params[0], ay=params[1], az=params[2];
-    float bx=params[3], by=params[4], bz=params[5];
-    float cx=params[6], cy=params[7], cz=params[8];
+int case_sph(vector<float>* params){
+    cout << "cas_sph" << endl;
+    float cx=(*params)[0], cy=(*params)[1], cz=(*params)[2], r=(*params)[3];
+    Vector3f center;
+    center << cx, cy, cz;
+    Sphere* sph = new Sphere(center, r, trans, brdf);
+    shapes.push_back(sph); 
+    return 1;
+}
+
+int case_tri(vector<float>* params){
+    float ax=(*params)[0], ay=(*params)[1], az=(*params)[2];
+    float bx=(*params)[3], by=(*params)[4], bz=(*params)[5];
+    float cx=(*params)[6], cy=(*params)[7], cz=(*params)[8];
     Vector3f a, b, c;
     a << ax, ay, az;
     b << bx, by, bz;
@@ -101,39 +130,51 @@ int case_obj(string file_name){
     return -1;
 }
 
-int case_ltp(vector<float> params){
-    float px=params[0], py=params[1], pz=params[2];
-    float r=params[3], g=params[4], b=params[5], falloff = params[6];
-    // Double check vector initializes to 0
+int case_ltp(vector<float>* params){
+    float px=(*params)[0], py=(*params)[1], pz=(*params)[2];
+    float r=(*params)[3], g=(*params)[4], b=(*params)[5];
+    int falloff = int((*params)[6]);
+    Vector3f p;
+    p << px, py, pz;
+    Color c(r, g, b);
+    PointLight* pl = new PointLight(p, c, falloff);
+    lights.push_back(pl);
+    return 1;
+}
+
+int case_lta(vector<float>* params){
+    float r=(*params)[0], g=(*params)[1], b=(*params)[2];
+    Color c(r,g,b);
+    ambient = ambient.add(c);
+    return 1;
+}
+
+int case_ltd(vector<float>* params){
+    float dx=(*params)[0], dy=(*params)[1], dz=(*params)[2];
+    float r=(*params)[3], g=(*params)[4], b=(*params)[5];
     return 0;
 }
 
-int case_ltd(vector<float> params){
-    float dx=params[0], dy=params[1], dz=params[2];
-    float r=params[3], g=params[4], b=params[5];
+int case_mat(vector<float>* params){
+    float kar=(*params)[0], kag=(*params)[1], kab=(*params)[2];
+    float kdr=(*params)[3], kdg=(*params)[4], kdb=(*params)[5];
+    float ksr=(*params)[6], ksg=(*params)[7], ksb=(*params)[8], ksp=(*params)[9];
+    float krr=(*params)[10], krg=(*params)[11], krb=(*params)[12];
     return 0;
 }
 
-int case_mat(vector<float> params){
-    float kar=params[0], kag=params[1], kab=params[2];
-    float kdr=params[3], kdg=params[4], kdb=params[5];
-    float ksr=params[6], ksg=params[7], ksb=params[8], ksp=params[9];
-    float krr=params[10], krg=params[11], krb=params[12];
+int case_xft(vector<float>* params){
+    float tx=(*params)[0], ty=(*params)[1], tz=(*params)[2];
     return 0;
 }
 
-int case_xft(vector<float> params){
-    float tx=params[0], ty=params[1], tz=params[2];
+int case_xfr(vector<float>* params){
+    float rx=(*params)[0], ry=(*params)[1], rz=(*params)[2];
     return 0;
 }
 
-int case_xfr(vector<float> params){
-    float rx=params[0], ry=params[1], rz=params[2];
-    return 0;
-}
-
-int case_xfs(vector<float> params){
-    float sx=params[0], sy=params[1], rz=params[2];
+int case_xfs(vector<float>* params){
+    float sx=(*params)[0], sy=(*params)[1], rz=(*params)[2];
     return 0;
 }
     
@@ -141,6 +182,8 @@ int handle_cases(string line){
     // Handles each line in the input file
     // if succesfully handled, returns positive int. Else negative int
     // returns 0 if unimplemented
+    cout << "handling cases" << endl;
+    
     if (line.length() < 3){
         return -1;
     }
@@ -151,37 +194,37 @@ int handle_cases(string line){
     // switch cannot take string, so hash it to enum
     switch (hash_it(op)) {
         case cam:
-            get_params(args, params, 15);
-            return 0;
+            params = get_params(args, 15);
+            return case_cam(&params);
         case sph:
-            get_params(args, params, 4);
-            case_sph(params);
-            return 0;
+            params = get_params(args, 4);
+            return case_sph(&params);
         case tri:
-            get_params(args, params, 9);
+            get_params(args, 9);
             return 0;
         case obj:
             return case_obj(args);
         case ltp:
-            get_params(args, params, 7);
-            return 0;
-        case ltd:
-            get_params(args, params, 6);
+            params = get_params(args,7);
+            return case_ltp(&params);
             return 0;
         case lta:
-            get_params(args, params, 3);
+            params = get_params(args,3);
+            return case_lta(&params);
+        case ltd:
+            get_params(args,6);
             return 0;
         case mat:
-            get_params(args, params, 13);
+            get_params(args,13);
             return 0;
         case xft:
-            get_params(args, params, 3);
+            get_params(args,3);
             return 0;
         case xfr:
-            get_params(args, params, 3);
+            get_params(args,3);
             return 0;
         case xfs:
-            get_params(args, params, 3);
+            get_params(args,3);
             return 0;
         default:
             return -1;
@@ -189,8 +232,28 @@ int handle_cases(string line){
     return 0;
 }
 
-int main()
-{
+void writePPM(int dimx, int dimy, Color* pixels, const char* filename) {
+    int i, j;
+    FILE *fp = fopen(filename, "wb"); /* b - binary mode */
+    (void) fprintf(fp, "P6\n%d %d\n255\n", dimx, dimy);
+    for (j = 0; j < dimy; ++j){
+        for (i = 0; i < dimx; ++i){
+            int pixInd = j * dimx + i;
+            if (pixels[pixInd].r > 1) pixels[pixInd].r = 1;
+            if (pixels[pixInd].g > 1) pixels[pixInd].g = 1;
+            if (pixels[pixInd].b > 1) pixels[pixInd].b = 1;
+            static unsigned char color[3];
+            color[0] = (unsigned char) (255 * pixels[pixInd].r);  /* red */
+            color[1] = (unsigned char) (255 * pixels[pixInd].g);  /* green */
+            color[2] = (unsigned char) (255 * pixels[pixInd].b);  /* blue */
+            (void) fwrite(color, 1, 3, fp);
+        }
+    }
+    (void) fclose(fp);
+}
+
+
+int main(){
     string file_name;
     cout << "Specify input file: ";
     cin >> file_name;
@@ -212,5 +275,27 @@ int main()
         input_file.close();
     }
     else cout << "Unable to open file" << endl;
+
+    // implement pass to ray tracer
+    int width=400, height=400;
+    Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
+
+    Color pixels[width*height];
+    Raytracer tracer = Raytracer(&shapes, &lights, ambient);
+    for (int r = 0; r < height; r++) {
+        if (r % 20 == 0) printf("%6.3f%%\n", 100.0 * r / height);
+        for (int c = 0; c < width; c++) {
+            float u, v;
+            u = 1 - 1.0 * c / width;
+            v = 1.0 * r / height;
+            Vector3f pos = (u * (v * ll + ((1 - v) * ul))) + ((1 - u) * (v * lr + ((1 - v) * ur)));
+            Ray ray = Ray(pos, pos - cam, 0, FLT_MAX);
+            Color res = tracer.trace(ray, 5);
+            pixels[r * width + c] = res;
+        }
+    }
+    printf("Writing to file\n");
+    string output_file = file_name+".ppm";
+    writePPM(width, height, pixels, output_file.c_str());
     return 0;
 }

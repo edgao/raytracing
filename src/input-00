@@ -1,3 +1,4 @@
+cam 0 0 50 -10 -10 10 10 -10 10 -10 10 10 10 10 10
 sph 0 0 0 4
-dud 0 0 0 
-obj "angelDrop_fixed.obj"
+ltp 0 10 0 1 1 1
+lta 0.5 0.5 0.5
