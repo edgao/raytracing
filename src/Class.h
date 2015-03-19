@@ -1,5 +1,7 @@
 #include <eigen3/Dense>
+#include <vector>
 using namespace Eigen;
+using namespace std;
 
 class Ray {
  public:
@@ -110,12 +112,10 @@ class DirectionalLight : public Light {
 
 class Raytracer {
  public:
-  unsigned int shapes_c;
-  Shape** shapes;
-  unsigned int lights_c;
-  Light** lights;
+  vector<Shape*> shapes;
+  vector<Light*> lights;
   Color ambient_lights;
-  Raytracer(unsigned int, Shape**, unsigned int, Light**, Color);
+  Raytracer(vector<Shape*>, vector<Light*>, Color);
   Vector3f reflectVector(Vector3f vec, Vector3f axis);
   Color shade(LocalGeo& geo, Ray& lightRay, Color lightColor, Vector3f viewer, BRDF brdf);
   bool firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thit, LocalGeo* geo);

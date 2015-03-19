@@ -253,10 +253,8 @@ void DirectionalLight::generateLightRay(LocalGeo& local, Ray* ray, Color* color)
   *color = this->color;
 }
 
-Raytracer::Raytracer(unsigned int sc, Shape** s, unsigned int lc, Light** l, Color al) {
-  shapes_c = sc;
+Raytracer::Raytracer(vector<Shape*> s, vector<Light*> l, Color al) {
   shapes = s;
-  lights_c = lc;
   lights = l;
   ambient_lights = al;
 }
@@ -289,7 +287,7 @@ bool Raytracer::firstObjectHit(Ray& ray, Shape* ignore, Shape* shape, float* thi
   float first_hit_t = FLT_MAX;
   LocalGeo first_hit_geo;
   bool had_hit = false;
-  for (unsigned int i = 0; i < shapes_c; i++) {
+  for (unsigned int i = 0; i < shapes.size(); i++) {
     Shape* shape = shapes[i];
     if (ignore == NULL || shape->id != ignore->id) {
       float thit;
@@ -330,7 +328,7 @@ Color Raytracer::trace(Ray& ray, unsigned int depth) {
     return Color(0, 0, 0);
   }
   // Shade this thing - for each light, if this point reaches the light, do shading
-  for (unsigned int i = 0; i < lights_c; i++) {
+  for (unsigned int i = 0; i < lights.size(); i++) {
     Ray light_ray;
     Color light_color;
     Light* light = lights[i];
