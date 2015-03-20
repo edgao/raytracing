@@ -317,7 +317,7 @@ int main(){
         return 0;
     }
 
-    int width=1000, height=1000;
+    int width=1000, height=500;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
     
     Color pixels[width * height];
