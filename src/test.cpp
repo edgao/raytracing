@@ -58,8 +58,8 @@ int main() {
   // Set up some shapes
   vector<Shape*> shapes;
   shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(),
-    8,
-    Transformation(MatrixUtils.createScalingMatrix(4, 2, 2)),
+    4,
+    Transformation(MatrixUtils::createScalingMatrix(4, 2, 2)),
     mat));
   /*shapes.push_back(new Sphere((Vector3f() << 0, 0, -17).finished(),
     1,
@@ -77,7 +77,7 @@ int main() {
     if (r % 20 == 0) printf("%6.3f%%\n", 100.0 * r / height);
     for (int c = 0; c < width; c++) {
       if (c == width / 2 && r == height / 2) {
-        printf("HERE\n");
+        printf("CENTER\n");
       }
       float u, v;
       u = 1 - 1.0 * c / width;

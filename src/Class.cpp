@@ -38,7 +38,7 @@ Matrix4f MatrixUtils::createTranslationMatrix(float tx, float ty, float tz) {
     0, 0, 0, 1;
   return ret;
 }
- Matrix4f MatrixUtils::createScalingMatrix(float sx, float sy, float sz) {
+Matrix4f MatrixUtils::createScalingMatrix(float sx, float sy, float sz) {
   Matrix4f ret;
   ret <<
     sx, 0, 0, 0,
@@ -104,7 +104,7 @@ Ray Transformation::Transformation::transformRay(Ray ray) {
 }
 // Rather than transforming the shapes themselves, transform the rays into the shapes' local coords
 Ray Transformation::transformRayToLocalCoords(Ray ray) {
-  return Ray(doTransformation(ray.pos, minv, 1), doTransformation(ray.dir, mt, 0), ray.t_min, ray.t_max);
+  return Ray(doTransformation(ray.pos, minv, 1), doTransformation(ray.dir, minv, 0), ray.t_min, ray.t_max);
 }
 LocalGeo Transformation::transformLocalGeo(LocalGeo geo) {
   LocalGeo ret(transformPoint(geo.pos), transformNormal(geo.normal));
