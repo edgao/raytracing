@@ -104,6 +104,9 @@ LocalGeo Transformation::transformLocalGeo(LocalGeo geo) {
   LocalGeo ret(transformPoint(geo.pos), transformNormal(geo.normal));
   return ret;
 }
+Transformation Transformation::chainTransformation(Matrix4f t) {
+  return Transformation(m * t);
+}
 
 Color::Color() {
   r = g = b = 0;
@@ -217,7 +220,7 @@ bool Sphere::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     Vector3f normal;
     normal << pos(0) - center(0), pos(1) - center(1), pos(2) - center(2);
     normal.normalize();
-    *geo = LocalGeo(pos, normal);
+    *geo = LocalGeo(transform.transformPoint(pos), transform.transformDirection(normal));
     return true;
   }
   return false;
@@ -276,8 +279,6 @@ Color Raytracer::shade(LocalGeo& geo, Ray& lightRay, Color lightColor, Vector3f 
   base = reflection.normalized().dot(viewer.normalized());
   if (base < 0)  base = 0;
   base = pow(base, brdf.specExp);
-  //if (base > 0.05)
-  //std::cout << "LIGHT DIRECTION\n" << lightRay.dir.normalized() << "\nVIEWER DIRECTION\n" << viewer.normalized() << "\nLIGHT REFLECTION ACROSS NORMAL\n" << reflection.normalized() << "\nBASE\n" << base << std::endl;
   res = res.add(lightColor.mul(brdf.ks).scale(base));
 
   return res;
@@ -325,7 +326,7 @@ Color Raytracer::trace(Ray& ray, unsigned int depth, Shape* ignore) {
   float first_hit_t;
   LocalGeo first_hit_geo;
   // If this ray never hits anything, return the color black
-  if (!firstObjectHit(ray, NULL, &first_hit_shape, &first_hit_t, &first_hit_geo) || !inRange(first_hit_t, ray.t_min, ray.t_max) || (ignore != NULL && first_hit_shape.id == ignore->id)) {
+  if (!firstObjectHit(ray, ignore, &first_hit_shape, &first_hit_t, &first_hit_geo) || !inRange(first_hit_t, ray.t_min, ray.t_max)) {
     return Color(0, 0, 0);
   }
   // Shade this thing - for each light, if this point reaches the light, do shading
@@ -343,22 +344,9 @@ Color Raytracer::trace(Ray& ray, unsigned int depth, Shape* ignore) {
     }
   }
   ret = ret.add(first_hit_shape.brdf.ka.mul(ambient_lights));
-  if (depth < 3) {
-    printf("ID = %d, DEPTH = %d; shaded to %f\n", first_hit_shape.id, depth, ret.r);
-  }
   Vector3f reflectedVec = reflectVector(-ray.dir, first_hit_geo.normal);
-  Ray reflectedRay = Ray(reflectedVec, first_hit_geo.pos, 0, FLT_MAX);
-  //printf("Shading %d at depth %d\n", first_hit_shape.id, depth);
-  //std::cout << reflectedVec << std::endl;
-  //std::cout << first_hit_geo.pos << std::endl;
+  Ray reflectedRay = Ray(first_hit_geo.pos, reflectedVec, 0, FLT_MAX);
   Color reflected_color = trace(reflectedRay, depth - 1, &first_hit_shape);
-  if (reflected_color.r > 0.0001) {
-    printf("Adding color to ID %d at depth %d: %f -> %f\n", first_hit_shape.id, depth, reflected_color.r, reflected_color.mul(first_hit_shape.brdf.kr).r);
-  }
-  if (reflected_color.r > 0.0001)
-    printf("Before %f\n", ret.r);
   ret = ret.add(reflected_color.mul(first_hit_shape.brdf.kr));
-  if (reflected_color.r > 0.0001)
-    printf("After %f\n", ret.r);
   return ret;
 }

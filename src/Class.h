@@ -38,6 +38,7 @@ class Transformation {
   Ray transformRay(Ray ray);
   Ray transformRayToLocalCoords(Ray ray);
   LocalGeo transformLocalGeo(LocalGeo geo);
+  Transformation chainTransformation(Matrix4f);
 };
 
 class Color {
