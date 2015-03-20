@@ -12,7 +12,7 @@ using namespace std;
 using namespace Eigen;
 
 Transformation trans;
-BRDF brdf;
+BRDF brdf(Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(0, 0, 0), 64);
 vector<Shape*> shapes;
 vector<Light*> lights;
 Color ambient = Color(); 
@@ -76,6 +76,7 @@ int case_cam(vector<float>* params){
     ur << urx, ury, urz;
     camera.push_back(e);
     camera.push_back(ll);
+    camera.push_back(lr);
     camera.push_back(ul);
     camera.push_back(ur);
     return 1;
@@ -277,10 +278,13 @@ int main(){
     else cout << "Unable to open file" << endl;
 
     // implement pass to ray tracer
+    // Temp Goal: create dummy test
+    // BRDF?
+
     int width=400, height=400;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
-
-    Color pixels[width*height];
+    
+    Color pixels[width * height];
     Raytracer tracer = Raytracer(&shapes, &lights, ambient);
     for (int r = 0; r < height; r++) {
         if (r % 20 == 0) printf("%6.3f%%\n", 100.0 * r / height);
@@ -295,7 +299,7 @@ int main(){
         }
     }
     printf("Writing to file\n");
-    string output_file = file_name+".ppm";
+    string output_file = "../image/"+file_name+".ppm";
     writePPM(width, height, pixels, output_file.c_str());
     return 0;
 }

@@ -6,4 +6,4 @@ test:
 	g++ -g -I ../lib Class.cpp test.cpp -o ../exec/test.out
 
 dev:
-	g++ -g -I ../lib -std=c++11 Class.cpp main.cpp -o main.out 
+	g++ -g -I ../lib -std=c++11 Class.cpp main.cpp -o ../exec/main.out 
