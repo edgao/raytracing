@@ -100,7 +100,9 @@ int case_tri(vector<float>* params){
     a << ax, ay, az;
     b << bx, by, bz;
     c << cx, cy, cz;
-    return 0;
+    Triangle* tri = new Triangle(a, b, c, trans, brdf);
+    shapes.push_back(tri);
+    return 1;
 } 
 
 int case_obj(string file_name){
@@ -134,6 +136,7 @@ int case_obj(string file_name){
 int case_ltp(vector<float>* params){
     float px=(*params)[0], py=(*params)[1], pz=(*params)[2];
     float r=(*params)[3], g=(*params)[4], b=(*params)[5];
+    // possible error, what if no falloff?
     int falloff = int((*params)[6]);
     Vector3f p;
     p << px, py, pz;
@@ -153,15 +156,25 @@ int case_lta(vector<float>* params){
 int case_ltd(vector<float>* params){
     float dx=(*params)[0], dy=(*params)[1], dz=(*params)[2];
     float r=(*params)[3], g=(*params)[4], b=(*params)[5];
-    return 0;
+    Vector3f d;
+    d << dx, dy, dz;
+    Color c(r,g,b);
+    DirectionalLight* dl = new DirectionalLight(d, c);
+    lights.push_back(dl);
+    return 1;
 }
 
 int case_mat(vector<float>* params){
     float kar=(*params)[0], kag=(*params)[1], kab=(*params)[2];
     float kdr=(*params)[3], kdg=(*params)[4], kdb=(*params)[5];
-    float ksr=(*params)[6], ksg=(*params)[7], ksb=(*params)[8], ksp=(*params)[9];
+    float ksr=(*params)[6], ksg=(*params)[7], ksb=(*params)[8];
+    float ksp=(*params)[9];
     float krr=(*params)[10], krg=(*params)[11], krb=(*params)[12];
-    return 0;
+    // d, s, a, r
+    Color ka(kar,kag,kab), kd(kdr,kdg,kdb), ks(ksr,ksg,ksb), kr(krr,krg,krb);
+    // possible error, ensure that I am actual replacing brdf
+    brdf = BRDF(kd, ks, ka, kr, ksp);
+    return 1;
 }
 
 int case_xft(vector<float>* params){
@@ -201,32 +214,31 @@ int handle_cases(string line){
             params = get_params(args, 4);
             return case_sph(&params);
         case tri:
-            get_params(args, 9);
-            return 0;
+            params = get_params(args, 9);
+            return case_tri(&params);
         case obj:
             return case_obj(args);
         case ltp:
             params = get_params(args,7);
             return case_ltp(&params);
-            return 0;
         case lta:
             params = get_params(args,3);
             return case_lta(&params);
         case ltd:
-            get_params(args,6);
-            return 0;
+            params = get_params(args,6);
+            return case_ltd(&params);;
         case mat:
-            get_params(args,13);
-            return 0;
+            params = get_params(args,13);
+            return case_mat(&params);
         case xft:
-            get_params(args,3);
-            return 0;
+            params = get_params(args,3);
+            return case_xft(&params);
         case xfr:
-            get_params(args,3);
-            return 0;
+            params = get_params(args,3);
+            return case_xfr(&params);
         case xfs:
-            get_params(args,3);
-            return 0;
+            params = get_params(args,3);
+            return case_xfs(&params);
         default:
             return -1;
     }
