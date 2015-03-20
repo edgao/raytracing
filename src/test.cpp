@@ -57,10 +57,8 @@ int main() {
   BRDF mat = BRDF(Color(0.5, 0.5, 0.5), Color(0.5, 0.5, 0.5), Color(1, 1, 1), Color(1, 1, 1), 64);
   // Set up some shapes
   vector<Shape*> shapes;
-  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(),
-    4,
-    Transformation(MatrixUtils::createScalingMatrix(4, 2, 2)),
-    mat));
+  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 8,
+    Transformation(MatrixUtils::createScalingMatrix(4, 2, 2)).chainTransformation(MatrixUtils::createRotationMatrix(15, 30, 45)), mat));
   /*shapes.push_back(new Sphere((Vector3f() << 0, 0, -17).finished(),
     1,
     Transformation(MatrixUtils::createScalingMatrix(4, 2, 2)),
