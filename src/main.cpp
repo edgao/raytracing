@@ -212,7 +212,7 @@ int case_xfs(vector<float>* params){
     return 1;
 }
 
-int case_xfz(vector<float>* params){
+int case_xfz(){
     trans = Transformation();
     return 1;
 }
@@ -225,7 +225,8 @@ int handle_cases(string line){
         return -1;
     }
     string op = line.substr(0,3);
-    string args = line.substr(4);
+    string args;
+    if (line.length() > 3) args = line.substr(4);
     vector<float> params;
 
     // switch cannot take string, so hash it to enum
@@ -262,6 +263,8 @@ int handle_cases(string line){
         case xfs:
             params = get_params(args,3);
             return case_xfs(&params);
+        case xfz:
+            return case_xfz();
         default:
             return -1;
     }
@@ -314,7 +317,7 @@ int main(){
         return 0;
     }
 
-    int width=400, height=400;
+    int width=1000, height=1000;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
     
     Color pixels[width * height];
