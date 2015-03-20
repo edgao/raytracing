@@ -199,14 +199,14 @@ int case_xft(vector<float>* params){
 
 int case_xfr(vector<float>* params){
     float rx=(*params)[0], ry=(*params)[1], rz=(*params)[2];
-    Matrix4f rm = MatrixUtils::createTranslationMatrix(rx, ry, rz);
+    Matrix4f rm = MatrixUtils::createRotationMatrix(rx, ry, rz);
     trans = trans.chainTransformation(rm);
     return 1;
 }
 
 int case_xfs(vector<float>* params){
     float sx=(*params)[0], sy=(*params)[1], sz=(*params)[2];
-    Matrix4f sm = MatrixUtils::createTranslationMatrix(sx, sy, sz);
+    Matrix4f sm = MatrixUtils::createScalingMatrix(sx, sy, sz);
     trans = trans.chainTransformation(sm);
     return 1;
 }
@@ -303,7 +303,10 @@ int main(){
         }
         input_file.close();
     }
-    else cout << "Unable to open file" << endl;
+    else{
+        cout << "Unable to open file" << endl;
+        return 0;
+    }
 
     int width=400, height=400;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
