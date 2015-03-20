@@ -19,7 +19,7 @@ Color ambient = Color();
 vector<Vector3f> camera;
 
 enum string_code{
-    cam, sph, tri, obj, ltp, ltd, lta, mat, xft, xfr, xfs, dud
+    cam, sph, tri, obj, ltp, ltd, lta, mat, xft, xfr, xfs, xfz, dud
 };
 
 string_code hash_it(string const& op){
@@ -34,6 +34,7 @@ string_code hash_it(string const& op){
     if (op == "xft") return xft;
     if (op == "xfr") return xfr;
     if (op == "xfs") return xfs;
+    if (op == "xfz") return xfz;
     return dud; // literally a dud case, or unimplemented case
 } 
 
@@ -208,6 +209,11 @@ int case_xfs(vector<float>* params){
     float sx=(*params)[0], sy=(*params)[1], sz=(*params)[2];
     Matrix4f sm = MatrixUtils::createScalingMatrix(sx, sy, sz);
     trans = trans.chainTransformation(sm);
+    return 1;
+}
+
+int case_xfz(vector<float>* params){
+    trans = Transformation();
     return 1;
 }
     
