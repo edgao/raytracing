@@ -46,31 +46,39 @@ int main() {
   ll << 3, -4, -2;
   lr << 3, 4, -2;*/
 
+  /*cam << 0, 0, 0;
+  ll << -1, -1, -3;
+  lr <<  1, -1, -3;
+  ur <<  1,  1, -3;
+  ul << -1,  1, -3;*/
+
   Transformation identity;
   Transformation stretch = Transformation(MatrixUtils::createScalingMatrix(0.5, 0.5, 0.5));
-  BRDF mat = BRDF(Color(0, 0, 0), Color(0, 0, 0), Color(1, 1, 1), Color(1, 1, 1), 64);
+  BRDF mat = BRDF(Color(0.5, 0.5, 0.5), Color(0.5, 0.5, 0.5), Color(1, 1, 1), Color(1, 1, 1), 64);
   // Set up some shapes
   vector<Shape*> shapes;
-  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 8, stretch, mat));
-  //shapes.push_back(new Sphere((Vector3f() << 8, 8, 8).finished(), 4, identity, mat));
-  //shapes.push_back(new Sphere((Vector3f() << 8, -8, 8).finished(), 4, identity, mat));
-  //shapes.push_back(new Sphere((Vector3f() << -8, 8, 8).finished(), 4, identity, mat));
-  //shapes.push_back(new Sphere((Vector3f() << -8, -8, 8).finished(), 4, identity, mat));
-  //shapes.push_back(new Triangle((Vector3f() << 10, 0, 150).finished(), (Vector3f() << 10, 150, -1500).finished(), (Vector3f() << 10, -150, -1500).finished(), identity, BRDF(Color(0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0), Color(1, 1, 1), Color(1, 1, 1), 64)));
-  //shapes.push_back(new Triangle((Vector3f() << -10, 0, 150).finished(), (Vector3f() << -10, -150, -1500).finished(), (Vector3f() << -10, 150, -1500).finished(), identity, BRDF(Color(0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0), Color(1, 1, 1), Color(1, 1, 1), 64)));
+  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(),
+    8,
+    Transformation(MatrixUtils.createScalingMatrix(4, 2, 2)),
+    mat));
+  /*shapes.push_back(new Sphere((Vector3f() << 0, 0, -17).finished(),
+    1,
+    Transformation(MatrixUtils::createScalingMatrix(4, 2, 2)),
+    BRDF(Color(1, 0, 0), Color(1, 1, 1), Color(0.1, 0.1, 0.1), Color(0.9, 0.9, 0.9), 50)));*/
   // Set up some lights
   vector<Light*> lights;
-  lights.push_back(new DirectionalLight((Vector3f() << -1, -1, -1).finished(), Color(0.5, 0.5, 0.5)));
-  lights.push_back(new DirectionalLight((Vector3f() <<  1, -1, -1).finished(), Color(0.5, 0.5, 0.5)));
-  lights.push_back(new DirectionalLight((Vector3f() <<  0,  1, -1).finished(), Color(0.5, 0.5, 0.5)));
-  //lights.push_back(new PointLight((Vector3f() << 9, 0,  5).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
-  //lights.push_back(new PointLight((Vector3f() << 9, 0, -5).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
+  lights.push_back(new DirectionalLight((Vector3f() <<  0.57735027, -0.57735027, -0.57735027).finished(), Color(1, 1, 1)));
+  lights.push_back(new DirectionalLight((Vector3f() << -0.57735027,  0.57735027,  0.57735027).finished(), Color(1, 1, 1)));
+  lights.push_back(new DirectionalLight((Vector3f() << 0, 0, -1).finished(), Color(1, 1, 1)));
   Color ambient = Color(0.1, 0.1, 0.1);
 
   Raytracer tracer = Raytracer(&shapes, &lights, ambient);
   for (int r = 0; r < height; r++) {
     if (r % 20 == 0) printf("%6.3f%%\n", 100.0 * r / height);
     for (int c = 0; c < width; c++) {
+      if (c == width / 2 && r == height / 2) {
+        printf("HERE\n");
+      }
       float u, v;
       u = 1 - 1.0 * c / width;
       v = 1.0 * r / height;

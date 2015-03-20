@@ -6,6 +6,9 @@
 inline bool inRange(float x, float min, float max) {
   return min <= x && x <= max;
 }
+inline float degToRad(float r) {
+  return 2 * 3.14159265 / 360 * r;
+}
 
 Ray::Ray() {}
 Ray::Ray(Vector3f p, Vector3f d, float t_min, float t_max) {
@@ -45,6 +48,9 @@ Matrix4f MatrixUtils::createTranslationMatrix(float tx, float ty, float tz) {
   return ret;
 }
  Matrix4f MatrixUtils::createRotationMatrix(float rx, float ry, float rz) {
+  rx = degToRad(rx);
+  ry = degToRad(ry);
+  rz = degToRad(rz);
   Matrix4f x, y, z;
   Matrix4f m;
   x <<
@@ -180,8 +186,10 @@ bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
   if (inRange(sol(0), ray.t_min, ray.t_max) && inRange(sol(1), 0, 1) && inRange(sol(2), 0, 1) && sol(1) + sol(2) <= 1) {
     // If this intersection occurs within the ray's lifespan, and is in the triangle proper
     *thit = sol(0);
-    *geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
-    //std::cout << "TRIANGLE NORMAL\n" << (sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1) << std::endl;
+    //*geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
+    Vector3f pos = ray.evaluate(*thit);
+    Vector3f normal = sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1;
+    *geo = LocalGeo(transform.transformPoint(pos), transform.transformNormal(normal));
     return true;
   }
   return false;
@@ -220,7 +228,10 @@ bool Sphere::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     Vector3f normal;
     normal << pos(0) - center(0), pos(1) - center(1), pos(2) - center(2);
     normal.normalize();
-    *geo = LocalGeo(transform.transformPoint(pos), transform.transformDirection(normal));
+    printf("BLAH\n");
+    std::cout << transform.transformPoint(pos) << std::endl;
+    std::cout << transform.transformNormal(normal) << std::endl;
+    *geo = LocalGeo(transform.transformPoint(pos), transform.transformNormal(normal));
     return true;
   }
   return false;
