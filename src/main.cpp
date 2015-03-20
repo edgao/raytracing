@@ -242,7 +242,6 @@ int handle_cases(string line){
         default:
             return -1;
     }
-    return 0;
 }
 
 void writePPM(int dimx, int dimy, Color* pixels, const char* filename) {
@@ -288,10 +287,6 @@ int main(){
         input_file.close();
     }
     else cout << "Unable to open file" << endl;
-
-    // implement pass to ray tracer
-    // Temp Goal: create dummy test
-    // BRDF?
 
     int width=400, height=400;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
