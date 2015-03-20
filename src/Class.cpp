@@ -111,7 +111,7 @@ LocalGeo Transformation::transformLocalGeo(LocalGeo geo) {
   return ret;
 }
 Transformation Transformation::chainTransformation(Matrix4f t) {
-  return Transformation(m * t);
+  return Transformation(t * m);
 }
 
 Color::Color() {
@@ -167,6 +167,11 @@ Triangle::Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Transformation t, BRDF
   this->n1.normalize();
   this->n2.normalize();
   this->n3.normalize();
+  
+  Vector3f center = (p1 + p2 + p3) / 3;
+  transform = Transformation(MatrixUtils::createTranslationMatrix(center(0), center(1), center(2)) *
+    transform.m *
+    MatrixUtils::createTranslationMatrix(-center(0), -center(1), -center(2)));
 }
 // Constructs a triangle with the given vertex normals
 Triangle::Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f n1, Vector3f n2, Vector3f n3, Transformation t, BRDF brdf) : Shape(t, brdf) {
@@ -176,6 +181,11 @@ Triangle::Triangle(Vector3f p1, Vector3f p2, Vector3f p3, Vector3f n1, Vector3f 
   this->n1 = n1.normalized();
   this->n2 = n2.normalized();
   this->n3 = n3.normalized();
+
+  Vector3f center = (p1 + p2 + p3) / 3;
+  transform = Transformation(MatrixUtils::createTranslationMatrix(center(0), center(1), center(2)) *
+    transform.m *
+    MatrixUtils::createTranslationMatrix(-center(0), -center(1), -center(2)));
 }
 bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
   // TODO Test ray transformation
@@ -198,6 +208,9 @@ bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
 Sphere::Sphere(Vector3f c, float r, Transformation t, BRDF brdf) : Shape(t, brdf) {
   center = c;
   radius = r;
+  transform = Transformation(MatrixUtils::createTranslationMatrix(center(0), center(1), center(2)) *
+    transform.m *
+    MatrixUtils::createTranslationMatrix(-center(0), -center(1), -center(2)));
 }
 bool Sphere::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
   // TODO Test ray transformation
