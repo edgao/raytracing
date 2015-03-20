@@ -228,9 +228,6 @@ bool Sphere::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
     Vector3f normal;
     normal << pos(0) - center(0), pos(1) - center(1), pos(2) - center(2);
     normal.normalize();
-    printf("BLAH\n");
-    std::cout << transform.transformPoint(pos) << std::endl;
-    std::cout << transform.transformNormal(normal) << std::endl;
     *geo = LocalGeo(transform.transformPoint(pos), transform.transformNormal(normal));
     return true;
   }

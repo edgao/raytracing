@@ -47,7 +47,6 @@ vector<float> get_params(string line, int expected){
     unsigned int i = 0;
     while (getline(ss, param, ' ') and i<expected){
         params[i] = stof(param);
-        cout << param << ":" << params[i]  << endl;
         i++;
     }
 
@@ -62,7 +61,6 @@ vector<float> get_params(string line, int expected){
 // TO IMPLEMENT: individual functions for handling each case
 // each function should take a string listing the parameters
 int case_cam(vector<float>* params){
-    cout << "handling cam" << endl;
     float ex=(*params)[0], ey=(*params)[1], ez=(*params)[2];
     float llx=(*params)[3], lly=(*params)[4], llz=(*params)[5];
     float lrx=(*params)[6], lry=(*params)[7], lrz=(*params)[8];
@@ -83,7 +81,6 @@ int case_cam(vector<float>* params){
 }
 
 int case_sph(vector<float>* params){
-    cout << "cas_sph" << endl;
     float cx=(*params)[0], cy=(*params)[1], cz=(*params)[2], r=(*params)[3];
     Vector3f center;
     center << cx, cy, cz;
@@ -111,6 +108,8 @@ int case_obj(string file_name){
     fstream input_file (file_name.c_str());
     if (input_file.is_open()){
         string line;
+        vector<Vector3f> vectors;  // Only handles vectors of length 3!
+        vector<Vector3f> faces;    // Only handles triangle polygons!
 
         while (getline(input_file, line)){
             istringstream iss(line);
@@ -118,16 +117,30 @@ int case_obj(string file_name){
             float args[3];
             iss >> defn >> args[0] >> args[1] >> args[2];
 
-            // cannot handle comments!
             if (line[0] == '#'){
             }
-            else if (defn == 'v' or defn == 'f'){
+            else if (defn == 'v'){
                 Vector3f vertex;
                 vertex << args[0], args[1], args[2];
+                vectors.push_back(vertex);
+            }
+            else if (defn == 'f'){
+                Vector3f face;
+                face << args[0], args[1], args[2];
+                faces.push_back(face);
             }
         }
         input_file.close();
-        return 0;
+
+        // for each face, create a triangle
+        for(vector<Vector3f>::iterator it=faces.begin(); it!=faces.end();++it){
+            Vector3f face = *it;
+            int i1=face(0), i2=face(1), i3=face(2);
+            Vector3f v1=vectors[i1-1], v2=vectors[i2-1], v3=vectors[i3-1];
+            Triangle* tri = new Triangle(v1, v2, v3, trans, brdf);
+            shapes.push_back(tri);
+        }
+        return 1;
     }
     else cerr << "Unable to open file" << endl;
     return -1;
@@ -179,25 +192,29 @@ int case_mat(vector<float>* params){
 
 int case_xft(vector<float>* params){
     float tx=(*params)[0], ty=(*params)[1], tz=(*params)[2];
-    return 0;
+    Matrix4f tm = MatrixUtils::createTranslationMatrix(tx, ty, tz);
+    trans = trans.chainTransformation(tm);
+    return 1;
 }
 
 int case_xfr(vector<float>* params){
     float rx=(*params)[0], ry=(*params)[1], rz=(*params)[2];
-    return 0;
+    Matrix4f rm = MatrixUtils::createTranslationMatrix(rx, ry, rz);
+    trans = trans.chainTransformation(rm);
+    return 1;
 }
 
 int case_xfs(vector<float>* params){
-    float sx=(*params)[0], sy=(*params)[1], rz=(*params)[2];
-    return 0;
+    float sx=(*params)[0], sy=(*params)[1], sz=(*params)[2];
+    Matrix4f sm = MatrixUtils::createTranslationMatrix(sx, sy, sz);
+    trans = trans.chainTransformation(sm);
+    return 1;
 }
     
 int handle_cases(string line){
     // Handles each line in the input file
     // if succesfully handled, returns positive int. Else negative int
     // returns 0 if unimplemented
-    cout << "handling cases" << endl;
-    
     if (line.length() < 3){
         return -1;
     }
@@ -242,7 +259,6 @@ int handle_cases(string line){
         default:
             return -1;
     }
-    return 0;
 }
 
 void writePPM(int dimx, int dimy, Color* pixels, const char* filename) {
@@ -288,10 +304,6 @@ int main(){
         input_file.close();
     }
     else cout << "Unable to open file" << endl;
-
-    // implement pass to ray tracer
-    // Temp Goal: create dummy test
-    // BRDF?
 
     int width=400, height=400;
     Vector3f cam=camera[0], ll=camera[1], lr=camera[2], ul=camera[3], ur=camera[4];
