@@ -47,17 +47,25 @@ int main() {
   lr << 3, 4, -2;*/
 
   Transformation identity;
+  Transformation stretch = Transformation(MatrixUtils::createScalingMatrix(0.5, 0.5, 0.5));
+  BRDF mat = BRDF(Color(0, 0, 0), Color(0, 0, 0), Color(1, 1, 1), Color(1, 1, 1), 64);
   // Set up some shapes
   vector<Shape*> shapes;
-  //shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 1, identity, BRDF(Color(1, 1, 1), Color(1, 1, 1), Color(1, 1, 1), Color(0, 0, 0), 64)));
-  shapes.push_back(new Triangle((Vector3f() << 10, 0, 150).finished(), (Vector3f() << 10, 150, -1500).finished(), (Vector3f() << 10, -150, -1500).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(100, 100, 100), 64)));
-  shapes.push_back(new Triangle((Vector3f() << -10, 0, 150).finished(), (Vector3f() << -10, -15, -1500).finished(), (Vector3f() << -10, 15, -1500).finished(), identity, BRDF(Color(0.1, 0.1, 0.1), Color(0.2, 0.2, 0.2), Color(1, 1, 1), Color(100, 100, 100), 64)));
-  std::cout << shapes[0]->id << " " << shapes[1]->id << std::endl;
+  shapes.push_back(new Sphere((Vector3f() << 0, 0, 0).finished(), 8, stretch, mat));
+  //shapes.push_back(new Sphere((Vector3f() << 8, 8, 8).finished(), 4, identity, mat));
+  //shapes.push_back(new Sphere((Vector3f() << 8, -8, 8).finished(), 4, identity, mat));
+  //shapes.push_back(new Sphere((Vector3f() << -8, 8, 8).finished(), 4, identity, mat));
+  //shapes.push_back(new Sphere((Vector3f() << -8, -8, 8).finished(), 4, identity, mat));
+  //shapes.push_back(new Triangle((Vector3f() << 10, 0, 150).finished(), (Vector3f() << 10, 150, -1500).finished(), (Vector3f() << 10, -150, -1500).finished(), identity, BRDF(Color(0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0), Color(1, 1, 1), Color(1, 1, 1), 64)));
+  //shapes.push_back(new Triangle((Vector3f() << -10, 0, 150).finished(), (Vector3f() << -10, -150, -1500).finished(), (Vector3f() << -10, 150, -1500).finished(), identity, BRDF(Color(0.0, 0.0, 0.0), Color(0.0, 0.0, 0.0), Color(1, 1, 1), Color(1, 1, 1), 64)));
   // Set up some lights
   vector<Light*> lights;
-  //lights.push_back(new PointLight((Vector3f() << 3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
-  //lights.push_back(new PointLight((Vector3f() << -3, 0, 0).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
-  Color ambient = Color(0.15, 0.15, 0.15);
+  lights.push_back(new DirectionalLight((Vector3f() << -1, -1, -1).finished(), Color(0.5, 0.5, 0.5)));
+  lights.push_back(new DirectionalLight((Vector3f() <<  1, -1, -1).finished(), Color(0.5, 0.5, 0.5)));
+  lights.push_back(new DirectionalLight((Vector3f() <<  0,  1, -1).finished(), Color(0.5, 0.5, 0.5)));
+  //lights.push_back(new PointLight((Vector3f() << 9, 0,  5).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
+  //lights.push_back(new PointLight((Vector3f() << 9, 0, -5).finished(), Color(1, 1, 1), PointLight::NO_FALLOFF));
+  Color ambient = Color(0.1, 0.1, 0.1);
 
   Raytracer tracer = Raytracer(&shapes, &lights, ambient);
   for (int r = 0; r < height; r++) {
@@ -68,7 +76,7 @@ int main() {
       v = 1.0 * r / height;
       Vector3f pos = (u * (v * ll + ((1 - v) * ul))) + ((1 - u) * (v * lr + ((1 - v) * ur)));
       Ray ray = Ray(pos, pos - cam, 0, FLT_MAX);
-      Color res = tracer.trace(ray, 3);
+      Color res = tracer.trace(ray, 5);
       pixels[r * width + c] = res;
     }
   }
