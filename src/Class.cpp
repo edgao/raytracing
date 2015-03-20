@@ -6,6 +6,9 @@
 inline bool inRange(float x, float min, float max) {
   return min <= x && x <= max;
 }
+inline float degToRad(float r) {
+  return 2 * 3.14159265 / 360 * r;
+}
 
 Ray::Ray() {}
 Ray::Ray(Vector3f p, Vector3f d, float t_min, float t_max) {
@@ -35,7 +38,7 @@ Matrix4f MatrixUtils::createTranslationMatrix(float tx, float ty, float tz) {
     0, 0, 0, 1;
   return ret;
 }
- Matrix4f MatrixUtils::createScalingMatrix(float sx, float sy, float sz) {
+Matrix4f MatrixUtils::createScalingMatrix(float sx, float sy, float sz) {
   Matrix4f ret;
   ret <<
     sx, 0, 0, 0,
@@ -45,6 +48,9 @@ Matrix4f MatrixUtils::createTranslationMatrix(float tx, float ty, float tz) {
   return ret;
 }
  Matrix4f MatrixUtils::createRotationMatrix(float rx, float ry, float rz) {
+  rx = degToRad(rx);
+  ry = degToRad(ry);
+  rz = degToRad(rz);
   Matrix4f x, y, z;
   Matrix4f m;
   x <<
@@ -98,7 +104,7 @@ Ray Transformation::Transformation::transformRay(Ray ray) {
 }
 // Rather than transforming the shapes themselves, transform the rays into the shapes' local coords
 Ray Transformation::transformRayToLocalCoords(Ray ray) {
-  return Ray(doTransformation(ray.pos, minv, 1), doTransformation(ray.dir, mt, 0), ray.t_min, ray.t_max);
+  return Ray(doTransformation(ray.pos, minv, 1), doTransformation(ray.dir, minv, 0), ray.t_min, ray.t_max);
 }
 LocalGeo Transformation::transformLocalGeo(LocalGeo geo) {
   LocalGeo ret(transformPoint(geo.pos), transformNormal(geo.normal));
@@ -180,8 +186,10 @@ bool Triangle::intersect(Ray& world_ray, float* thit, LocalGeo* geo) {
   if (inRange(sol(0), ray.t_min, ray.t_max) && inRange(sol(1), 0, 1) && inRange(sol(2), 0, 1) && sol(1) + sol(2) <= 1) {
     // If this intersection occurs within the ray's lifespan, and is in the triangle proper
     *thit = sol(0);
-    *geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
-    //std::cout << "TRIANGLE NORMAL\n" << (sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1) << std::endl;
+    //*geo = LocalGeo(ray.evaluate(*thit), sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1);
+    Vector3f pos = ray.evaluate(*thit);
+    Vector3f normal = sol(1) * n2 + sol(2) * n3 + (1 - sol(1) - sol(2)) * n1;
+    *geo = LocalGeo(transform.transformPoint(pos), transform.transformNormal(normal));
     return true;
   }
   return false;
